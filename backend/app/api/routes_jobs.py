@@ -8,6 +8,9 @@ from fastapi.responses import FileResponse, Response
 from app.config import settings
 from app.pipeline import jobs as job_runner
 from app.pipeline.pdf_export import build_pdf
+from pydantic import BaseModel
+
+from app.estimate import TIER_STEPS, make_estimate
 from app.schemas import ExportResponse, GenerateResponse, Job, JobStatus, StatusResponse
 from app.store import store
 
@@ -104,3 +107,42 @@ def images_zip(plan_id: str):
         raise HTTPException(404, "no finished images yet")
     return Response(buf.getvalue(), media_type="application/zip",
                     headers={"Content-Disposition": f'attachment; filename="{plan_id}-images.zip"'})
+
+
+class UpgradeRequest(BaseModel):
+    tier: str
+
+
+_RANK = {"draft": 0, "standard": 1, "high": 2}
+
+
+def _upgrade(job_id: str) -> None:
+    found = store.find_job(job_id)
+    if found is None:
+        return
+    plan, job = found
+    before = job.neurons or 0.0
+    job_runner._run_one(plan, job)
+    if job.status == JobStatus.completed and not job.cache_hit:
+        job.neurons = round(before + (job.neurons or 0.0), 3)  # the first try was paid for too
+
+
+@router.post("/jobs/{job_id}/upgrade", status_code=202)
+def upgrade(job_id: str, req: UpgradeRequest, background: BackgroundTasks) -> dict:
+    """Upgrade on demand: make ONE finished picture again at a higher quality tier. Other pictures are untouched."""
+    found = store.find_job(job_id)
+    if found is None:
+        raise HTTPException(404, "job not found")
+    plan, job = found
+    if req.tier not in _RANK:
+        raise HTTPException(400, "tier must be draft, standard or high")
+    if job.status != JobStatus.completed:
+        raise HTTPException(409, "only finished pictures can be upgraded")
+    if _RANK[req.tier] <= _RANK[job.tier]:
+        raise HTTPException(409, "pick a tier higher than the current one")
+    job.tier = req.tier  # type: ignore[assignment]
+    job.steps = TIER_STEPS[req.tier]
+    job.estimate = make_estimate(req.tier)
+    job.status = JobStatus.processing
+    background.add_task(_upgrade, job_id)
+    return {"job_id": job_id, "tier": req.tier, "steps": job.steps}

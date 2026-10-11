@@ -67,3 +67,22 @@ def test_age_from_number_of_years():
     assert infer_age_band("science for 12 year old students")[0] == "9-12"
     assert infer_age_band("safety for age 30")[0] == "adult"
     assert infer_age_band("a picture of a cat")[0] is None
+
+
+def test_tier_from_words_and_auto_material():
+    from app.planner import make_plan
+    from app.schemas import GenerationRequest, MaterialType
+
+    def plan(prompt, **ov):
+        return make_plan(GenerationRequest(material_type=MaterialType.auto, prompt=prompt, overrides=ov or None))
+
+    p = plan("a highly detailed poster of the solar system")
+    assert p.material_type == MaterialType.poster and p.tier == "high" and "detailed" in p.tier_reason
+    p = plan("a quick rough flashcard set of animals")
+    assert p.material_type == MaterialType.flashcards and p.tier == "draft"
+    p = plan("worksheet on fruits")
+    assert p.material_type == MaterialType.worksheet and p.tier == "standard"
+    p = plan("a cute puppy")
+    assert p.material_type == MaterialType.thumbnail and p.tier_reason.startswith("Guessed")
+    assert plan("a highly detailed poster of cats", tier="draft").tier == "draft"      # the user always wins
+    assert plan("solar system for the classroom wall").material_type == MaterialType.poster

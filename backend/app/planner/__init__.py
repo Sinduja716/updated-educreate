@@ -18,11 +18,21 @@ from app.schemas import GenerationRequest, Job, MaterialType, Plan, ResolvedFiel
 
 _KEYWORDS = [
     ("poster", MaterialType.poster), ("wall chart", MaterialType.poster), ("banner", MaterialType.poster),
+    ("classroom wall", MaterialType.poster), ("wall display", MaterialType.poster), ("for the wall", MaterialType.poster),
     ("colouring", MaterialType.colouring), ("coloring", MaterialType.colouring), ("line art", MaterialType.colouring),
-    ("flashcard", MaterialType.flashcards), ("flash card", MaterialType.flashcards),
+    ("colour book", MaterialType.colouring), ("color book", MaterialType.colouring), ("outline", MaterialType.colouring),
+    ("flashcard", MaterialType.flashcards), ("flash card", MaterialType.flashcards), ("revision card", MaterialType.flashcards),
     ("worksheet", MaterialType.worksheet), ("homework", MaterialType.worksheet), ("exercise sheet", MaterialType.worksheet),
+    ("practice sheet", MaterialType.worksheet), ("quiz sheet", MaterialType.worksheet),
     ("thumbnail", MaterialType.thumbnail), ("icon", MaterialType.thumbnail),
-    ("avatar", MaterialType.thumbnail), ("draft", MaterialType.thumbnail),
+    ("avatar", MaterialType.thumbnail), ("draft", MaterialType.thumbnail), ("sticker", MaterialType.thumbnail),
+]
+
+# Words that tell how much detail the user wants. First group found wins; the user's own tier choice always beats this.
+_TIER_WORDS = [
+    ("high", ("highly detailed", "high quality", "high-quality", "detailed", "intricate", "realistic", "photorealistic",
+              "professional", "print quality", "large print", "4k", "hd", "masterpiece", "best quality")),
+    ("draft", ("quick", "rough", "sketch", "draft", "preview", "small icon", "fast", "just an idea")),
 ]
 
 def _load_wordlists() -> dict[str, list[str]]:
@@ -34,7 +44,8 @@ def _load_wordlists() -> dict[str, list[str]]:
 WORDLISTS = _load_wordlists()
 
 _OUTLINE_WORDS = ("outline", "black and white", "black-and-white", "line art", "line drawing", "colouring page",
-                  "coloring page", "colouring book", "coloring book", "to colour", "to color", "b/w")
+                  "coloring page", "colouring book", "coloring book", "to colour", "to color", "b/w",
+                  "colour book", "color book", "colouring", "coloring", "colour in", "color in", "sketch", "black & white", "black white")
 _COLOUR_WORDS = ("colourful", "colorful", "in colour", "in color", "full colour", "full color", "painted", "coloured picture")
 _AUDIENCES = [  # first match wins; (words, age_band)
     (("toddler", "preschool", "pre-school", "nursery", "kindergarten", "lkg", "ukg", "age 3", "age 4", "age 5"), "3-5"),
@@ -72,6 +83,16 @@ def infer_age_band(prompt: str) -> tuple[str | None, str | None]:
     return None, None
 
 
+def infer_tier(prompt: str) -> tuple[str | None, str | None]:
+    """Returns (tier, matched_word) when the words ask for more or less detail, else (None, None). Whole words only."""
+    low = prompt.lower()
+    for tier, words in _TIER_WORDS:
+        for w in words:
+            if re.search(r"(?<![a-z0-9])" + re.escape(w) + r"(?![a-z0-9])", low):
+                return tier, w
+    return None, None
+
+
 def resolve_purpose(req: GenerationRequest) -> tuple[MaterialType, list[str]]:
     """Rule-based purpose resolution."""
     warnings = []
@@ -92,7 +113,7 @@ def resolve_purpose(req: GenerationRequest) -> tuple[MaterialType, list[str]]:
     if inferred_purpose:
         return inferred_purpose, [f"Purpose chosen automatically: {inferred_purpose.value}."]
 
-    return MaterialType.worksheet, ["Purpose guessed (worksheet). Pick a button if that is wrong."]
+    return MaterialType.thumbnail, ["Purpose guessed (plain picture). Pick a material if that is wrong."]
 
 def parse_count_and_subjects(prompt: str) -> tuple[int | None, list[str] | None, str | None]:
     prompt_lower = prompt.lower()
@@ -210,12 +231,15 @@ def make_plan(req: GenerationRequest) -> Plan:
 
     manual = req.overrides.tier if req.overrides and req.overrides.tier else None
     table_tier, table_reason = SETTINGS_TABLE.get((purpose, mode), (d.tier, d.reason))
-    tier = manual or table_tier
+    word_tier, tier_word = infer_tier(req.prompt)
+    tier = manual or word_tier or table_tier
     if manual:
         reason = "Chosen by you."
+    elif word_tier:
+        reason = f"Detected '{tier_word}' in your words, so {word_tier} quality is used."
     else:
         reason = table_reason
-        if req.material_type == MaterialType.auto:
+        if req.material_type == MaterialType.auto and not word_tier:
             guessed = any("guessed" in w.lower() for w in warnings)
             reason = (f"Detected {purpose.value} by Gemini ({ai_reason}). {table_reason}" if ai_reason else
                       f"Guessed: your request did not say what it is for, so {purpose.value} was chosen. {table_reason} "

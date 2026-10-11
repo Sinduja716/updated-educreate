@@ -46,3 +46,46 @@ def test_saved_images_and_global_metrics(client):
     assert len(c.get("/api/v1/saved-images").json()) == 1
     c.delete("/api/v1/saved-images")
     assert c.get("/api/v1/saved-images").json() == []
+
+
+def test_search_saved_images_and_upgrade(client):
+    c = client
+    c.delete("/api/v1/saved-images")
+    plan = c.post("/api/v1/plans", json={"material_type": "flashcards", "prompt": "animals cat and dog", "overrides": {"count": 2, "tier": "draft"}}).json()
+    c.post(f"/api/v1/plans/{plan['plan_id']}/generate")
+    assert len(c.get("/api/v1/saved-images", params={"q": "cat"}).json()) == 2
+    assert c.get("/api/v1/saved-images", params={"q": "zebra"}).json() == []
+    job = c.get(f"/api/v1/plans/{plan['plan_id']}/status").json()["jobs"][0]
+    assert c.post(f"/api/v1/jobs/{job['job_id']}/upgrade", json={"tier": "draft"}).status_code == 409
+    assert c.post(f"/api/v1/jobs/{job['job_id']}/upgrade", json={"tier": "ultra"}).status_code == 400
+    assert c.post(f"/api/v1/jobs/{job['job_id']}/upgrade", json={"tier": "high"}).status_code == 202
+    after = c.get(f"/api/v1/jobs/{job['job_id']}").json()
+    assert after["tier"] == "high" and after["steps"] == 8 and after["status"] == "completed"
+
+
+def test_upgrade_still_works_after_restart(client):
+    from app.store import store
+    c = client
+    plan = c.post("/api/v1/plans", json={"material_type": "flashcards", "prompt": "animals cat", "overrides": {"count": 1, "tier": "draft"}}).json()
+    c.post(f"/api/v1/plans/{plan['plan_id']}/generate")
+    job_id = plan["jobs"][0]["job_id"]
+    store.clear()   # same as restarting the backend: memory is empty, the database still has the plan
+    assert c.get(f"/api/v1/plans/{plan['plan_id']}/status").json()["completed"] == 1
+    store.clear()
+    assert c.post(f"/api/v1/jobs/{job_id}/upgrade", json={"tier": "high"}).status_code == 202
+    assert c.get(f"/api/v1/jobs/{job_id}").json()["tier"] == "high"
+
+
+def test_old_plan_rebuilt_from_history(client):
+    from app.pipeline import app_state
+    from app.store import store
+    c = client
+    plan = c.post("/api/v1/plans", json={"material_type": "flashcards", "prompt": "animals cat", "overrides": {"count": 2, "tier": "draft"}}).json()
+    c.post(f"/api/v1/plans/{plan['plan_id']}/generate")
+    app_state.delete("plans", plan["plan_id"])      # a plan made before plans were saved
+    store.clear()
+    status = c.get(f"/api/v1/plans/{plan['plan_id']}/status").json()
+    assert status["total"] == 2 and status["completed"] == 2
+    job_id = plan["jobs"][0]["job_id"]
+    store.clear()
+    assert c.post(f"/api/v1/jobs/{job_id}/upgrade", json={"tier": "high"}).status_code == 202

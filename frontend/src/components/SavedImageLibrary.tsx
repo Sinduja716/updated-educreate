@@ -15,23 +15,29 @@ interface SavedImageLibraryProps {
   onSessionClick: (session: CreationSession) => void;
   onNewCreation: () => void;
   onReuse: (prompt: string, category: OutputCategory) => void;
+  initialQuery?: string;
 }
 
-export function SavedImageLibrary({ onNewCreation, onReuse }: SavedImageLibraryProps) {
+export function SavedImageLibrary({ onNewCreation, onReuse, initialQuery = '' }: SavedImageLibraryProps) {
   const [images, setImages] = useState<SavedImage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState(initialQuery);
+
+  useEffect(() => { setQuery(initialQuery); }, [initialQuery]);
 
   useEffect(() => {
-    async function load() {
+    let cancelled = false;
+    const t = setTimeout(async () => {
       try {
-        setImages(await apiService.getSavedImages());
+        const data = await apiService.getSavedImages(query);
+        if (!cancelled) setImages(data);
       } catch {
-        setImages([]);
+        if (!cancelled) setImages([]);
       }
-      setLoading(false);
-    }
-    load();
-  }, []);
+      if (!cancelled) setLoading(false);
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [query]);
 
   const handleDownload = (url: string, id: string) => {
     const a = document.createElement('a');
@@ -49,14 +55,22 @@ export function SavedImageLibrary({ onNewCreation, onReuse }: SavedImageLibraryP
   return (
     <div className="workspace animate-fade-in">
       <div className="full-container">
-        <h1 style={{ color: 'var(--accent-primary)', marginBottom: '2rem' }}>Saved Images</h1>
+        <h1 style={{ color: 'var(--accent-primary)', marginBottom: '1rem' }}>Saved Images</h1>
+        <input
+          type="text"
+          className="input"
+          placeholder="Search saved images (for example: puppy)"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          style={{ marginBottom: '1.5rem', maxWidth: '420px' }}
+        />
 
         {images.length === 0 ? (
           <div className="card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
             <div style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
               <ImageIcon size={48} style={{ margin: '0 auto', display: 'block', opacity: 0.5 }} />
             </div>
-            <h3 style={{ marginBottom: '0.5rem' }}>Your library is empty</h3>
+            <h3 style={{ marginBottom: '0.5rem' }}>{query ? 'No saved image matches your search' : 'Your library is empty'}</h3>
             <p style={{ margin: 0, maxWidth: '400px', marginInline: 'auto' }}>
               Images you generate or retrieve will automatically be saved here for future reference.
             </p>

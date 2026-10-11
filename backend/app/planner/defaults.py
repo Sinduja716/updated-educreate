@@ -45,7 +45,7 @@ SETTINGS_TABLE: dict[tuple[MaterialType, str], tuple[str, str]] = {
     (MaterialType.poster, "outline"): ("standard", "An outline poster is large but has no colour detail, so a middle effort is used."),
     (MaterialType.poster, "colour"): ("high", "Coloured posters are printed large and viewed from a distance, so detail matters."),
     (MaterialType.thumbnail, "outline"): ("draft", "Thumbnails and icons are tiny, so a quick draft is enough."),
-    (MaterialType.thumbnail, "colour"): ("draft", "Thumbnails and icons are tiny, so a quick draft is enough."),
+    (MaterialType.thumbnail, "colour"): ("draft", "A first look is made as a quick, cheap draft. Upgrade it later if you like it."),
 }
 
 # Default colour mode per material when the user says nothing.

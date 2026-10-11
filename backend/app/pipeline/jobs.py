@@ -88,6 +88,7 @@ def _generate_with_retries(provider, job: Job, base_prompt: str):
 
 def _run_one(plan: Plan, job: Job) -> None:
     _run_one_inner(plan, job)
+    store._persist(plan)
     if job.status == JobStatus.completed:
         try:
             history.add_history(job, plan)

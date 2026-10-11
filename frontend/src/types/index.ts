@@ -16,6 +16,8 @@ export interface ImageResult {
   status: ImageStatus;
   isRetrieved: boolean;
   errorMessage?: string;
+  tier?: Tier;
+  neurons?: number;
 }
 
 export interface CreationSession {
@@ -29,6 +31,7 @@ export interface CreationSession {
   images: ImageResult[];
   metrics?: SessionMetrics;
   planId?: string;
+  material?: string;
   tier?: Tier;
   colourMode?: ColourMode;
 }

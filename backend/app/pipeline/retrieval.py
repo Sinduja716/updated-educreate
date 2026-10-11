@@ -50,17 +50,27 @@ def _age(plan: Plan) -> str:
     return "any"
 
 
+ALL_MATERIALS = ("colouring", "flashcards", "worksheet", "poster", "thumbnail")
+
+
+def _material_order(plan: Plan) -> list[str]:
+    """The stored picture is a plain picture of one subject, so any material can reuse it. Own material is tried first."""
+    own = plan.material_type.value
+    return [own] + [m for m in ALL_MATERIALS if m != own]
+
+
 def _in_mode(plan: Plan, job: Job, mode: str):
     """Steps 1 and 2 inside one colour mode. Returns png bytes or None."""
-    material = plan.material_type.value
     style, age = _style(plan, mode), _age(plan)
-    exact = library.find(job.item_key, material, style, age, min_steps=job.steps)
-    if exact is not None:
-        return exact, "reuse"
+    for material in _material_order(plan):
+        exact = library.find(job.item_key, material, style, age, min_steps=job.steps)
+        if exact is not None:
+            return exact, "reuse"
     wanted = prompt_tokens(materials.subject_of(job, plan))
     best, best_score = None, 0.0
     stem = _stem(job.item_key)
-    for c in library.candidates(material, style, age):
+    pool = [c for material in _material_order(plan) for c in library.candidates(material, style, age)]
+    for c in pool:
         if c["steps"] < job.steps:
             continue
         if _stem(c["subject"]) == stem:  # other pages of the same request must stay different pictures
@@ -90,3 +100,11 @@ def find_stored(plan: Plan, job: Job):
             to_line_art(img).save(buf, format="PNG")
             return buf.getvalue(), "reuse-outline"
     return None
+
+
+def would_reuse(plan: Plan, job: Job) -> bool:
+    """True when this picture would be taken from the library (so it costs 0 neurons). Used for the cost preview."""
+    try:
+        return find_stored(plan, job) is not None
+    except Exception:
+        return False

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ViewState, CreationSession } from '../types';
 import { Settings, MessageSquare, Search, MoreVertical, Trash2, Edit2, X, PanelLeftClose, PanelLeftOpen, Sparkles, Folder, History, Activity } from 'lucide-react';
+import { apiService } from '../services/apiService';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -15,11 +16,25 @@ interface SidebarProps {
   onDeleteSession: (id: string) => void;
   onGoHome: () => void;
   onToggleSidebar: () => void;
+  onOpenLibrary: (query: string) => void;
 }
 
-export function Sidebar({ isOpen, isMobileOpen, onCloseMobile, viewState, sessions, onNavigate, onNewCreation, onLoadSession, onRenameSession, onDeleteSession, onGoHome, onToggleSidebar }: SidebarProps) {
+export function Sidebar({ isOpen, isMobileOpen, onCloseMobile, viewState, sessions, onNavigate, onNewCreation, onLoadSession, onRenameSession, onDeleteSession, onGoHome, onToggleSidebar, onOpenLibrary }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('All');
+  const [imageHits, setImageHits] = useState<{ id: string; url: string; title: string }[]>([]);
+
+  // Search also looks inside the saved pictures (by what they show), not only the conversation titles.
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) { setImageHits([]); return; }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      apiService.getSavedImages(q).then(r => { if (!cancelled) setImageHits(r.slice(0, 12)); }).catch(() => { if (!cancelled) setImageHits([]); });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [searchQuery]);
+
   const [contextMenuId, setContextMenuId] = useState<string | null>(null);
   
   const [sidebarWidth, setSidebarWidth] = useState(260);
@@ -211,6 +226,25 @@ export function Sidebar({ isOpen, isMobileOpen, onCloseMobile, viewState, sessio
             ) : null}
             
             <div style={{ flex: 1, overflowY: 'auto' }}>
+              {(isOpen || isMobileOpen) && searchQuery.trim() && imageHits.length > 0 && (
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <p style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: '0 0 0.375rem 0.25rem' }}>
+                    Matching images ({imageHits.length})
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.375rem' }}>
+                    {imageHits.map(h => (
+                      <button
+                        key={h.id}
+                        title={h.title}
+                        onClick={() => { onOpenLibrary(searchQuery.trim()); onCloseMobile(); }}
+                        style={{ padding: 0, border: '1px solid var(--border-color)', borderRadius: '6px', overflow: 'hidden', background: 'var(--bg-color)', cursor: 'pointer', aspectRatio: '1 / 1' }}
+                      >
+                        <img src={h.url} alt={h.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {filteredSessions.length === 0 ? (
                 <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', padding: '0.5rem' }}>No sessions found.</p>
               ) : (

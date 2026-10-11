@@ -105,3 +105,28 @@ def test_other_age_group_reuses_same_picture(client, fake):
     assert run("3-5")["image_calls"] == 1
     again = run("9-12")
     assert again["image_calls"] == 0 and again["cache_hits"] == 1
+
+
+def _run(client, material, prompt, **ov):
+    plan = client.post("/api/v1/plans", json={"material_type": material, "prompt": prompt, "overrides": {"count": 1, **ov}}).json()
+    client.post(f"/api/v1/plans/{plan['plan_id']}/generate")
+    return plan, client.get(f"/api/v1/plans/{plan['plan_id']}/metrics").json()
+
+
+def test_related_prompt_and_other_material_reuse_stored_picture(client, fake):
+    _, m = _run(client, "thumbnail", "a cute puppy")
+    assert m["image_calls"] == 1
+    _, m = _run(client, "thumbnail", "puppy")                      # shorter, related prompt
+    assert m["image_calls"] == 0 and m["cache_hits"] == 1
+    plan, m = _run(client, "auto", "a cute puppy for a colouring book")  # other material, outline wanted
+    assert plan["resolved"]["colour_mode"]["value"] == "outline" and plan["material_type"] == "colouring"
+    assert m["image_calls"] == 0 and m["cache_hits"] == 1          # colour picture converted to outline, 0 neurons
+
+
+def test_reuse_preview_before_generating(client, fake):
+    _run(client, "thumbnail", "a cute puppy")
+    plan = client.post("/api/v1/plans", json={"material_type": "thumbnail", "prompt": "puppy", "overrides": {"count": 1}}).json()
+    r = client.get(f"/api/v1/plans/{plan['plan_id']}/reuse").json()
+    assert r["total"] == 1 and r["reusable"] == 1
+    other = client.post("/api/v1/plans", json={"material_type": "thumbnail", "prompt": "a red train", "overrides": {"count": 1}}).json()
+    assert client.get(f"/api/v1/plans/{other['plan_id']}/reuse").json()["reusable"] == 0

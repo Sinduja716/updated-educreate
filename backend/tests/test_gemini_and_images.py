@@ -60,7 +60,7 @@ def test_user_choices_beat_gemini(gem):
 def test_bad_or_failed_gemini_falls_back_to_rules(gem):
     gem["alpha"] = "this is not json"
     p = _plan("alpha draw a cat")
-    assert p.material_type == MaterialType.worksheet and p.tier_reason.startswith("Guessed")
+    assert p.material_type == MaterialType.thumbnail and p.tier_reason.startswith("Guessed")
     assert any("Gemini was not available" in w for w in p.warnings)
     gem["beta"] = {"material_type": "rocket", "colour_mode": "pink", "age_band": "99", "count": 500, "subjects": "no"}
     assert gemini.suggest("beta x") == {"material_type": None, "colour_mode": None, "age_band": None, "count": None,

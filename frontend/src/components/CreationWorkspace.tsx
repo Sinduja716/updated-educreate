@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { CreationSession, ImageResult } from '../types';
-import { apiService } from '../services/apiService';
+import type { CreationSession, ImageResult, Tier } from '../types';
+import { apiService, fmtNeurons, fmtUsd } from '../services/apiService';
 import { Download, RefreshCcw, AlertTriangle, CheckCircle, Search, Info, ChevronLeft, ChevronRight, Maximize2, X, ZoomIn, ZoomOut, FileText } from 'lucide-react';
 
 interface CreationWorkspaceProps {
@@ -49,7 +49,7 @@ export function CreationWorkspace({ session, onUpdateSession, onCreateAnother }:
         (updatedImages) => {
           onUpdateSession(prev => ({ ...prev, images: updatedImages }));
         },
-        (p) => onUpdateSession(prev => ({ ...prev, planId: p.planId, tier: p.tier, colourMode: p.colourMode }))
+        (p) => onUpdateSession(prev => ({ ...prev, planId: p.planId, tier: p.tier, colourMode: p.colourMode, category: prev.category ?? p.category, ageGroup: prev.ageGroup ?? p.ageGroup, quantity: prev.quantity ?? p.quantity, material: prev.material ?? p.material }))
       );
       onUpdateSession(prev => ({ ...prev, metrics: result.metrics, planId: result.planId, tier: result.tier, colourMode: result.colourMode }));
     } catch (err: any) {
@@ -72,6 +72,18 @@ export function CreationWorkspace({ session, onUpdateSession, onCreateAnother }:
       URL.revokeObjectURL(href);
     } catch {
       setError('Download failed. Please try again.');
+    }
+  };
+
+  const handleUpgrade = async (imageId: string, tier: Tier) => {
+    setError('');
+    onUpdateSession(prev => ({ ...prev, images: prev.images.map(i => (i.id === imageId ? { ...i, status: 'Generating' as const } : i)) }));
+    try {
+      const metrics = await apiService.upgradeImage(session, imageId, tier, (imgs) => onUpdateSession(prev => ({ ...prev, images: imgs })));
+      onUpdateSession(prev => ({ ...prev, metrics, tier }));
+    } catch (e: any) {
+      setError(e.message || 'Upgrade failed.');
+      onUpdateSession(prev => ({ ...prev, images: prev.images.map(i => (i.id === imageId ? { ...i, status: 'Completed' as const } : i)) }));
     }
   };
 
@@ -255,13 +267,13 @@ export function CreationWorkspace({ session, onUpdateSession, onCreateAnother }:
                           
                           {img.isRetrieved && (
                             <p style={{ fontSize: '0.875rem', color: 'var(--success-color)', margin: '0 0 0.5rem 0' }}>
-                              Retrieved from existing library
+                              Retrieved from existing library - 0 neurons, $0
                             </p>
                           )}
                           
                           {img.status === 'Completed' && !img.isRetrieved && (
                             <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: '0 0 0.5rem 0' }}>
-                              New image created
+                              New image created{img.neurons != null ? ` - ${fmtNeurons(img.neurons)} (${fmtUsd(img.neurons / 1000 * 0.011)})` : ''}
                             </p>
                           )}
 
@@ -277,6 +289,19 @@ export function CreationWorkspace({ session, onUpdateSession, onCreateAnother }:
                             <button className="btn btn-secondary" onClick={() => handleDownload(img.url!, img.id)}>
                               <Download size={16} /> Download
                             </button>
+                          )}
+                          {img.status === 'Completed' && (img.tier ?? session.tier) !== 'high' && session.planId && (
+                            <select
+                              className="select-input"
+                              style={{ width: 'auto', padding: '0.375rem 0.5rem' }}
+                              value=""
+                              title="Make this picture again at a higher quality. Costs more neurons."
+                              onChange={e => { if (e.target.value) handleUpgrade(img.id, e.target.value as Tier); }}
+                            >
+                              <option value="">Upgrade quality ({img.tier ?? session.tier ?? 'standard'})</option>
+                              {(img.tier ?? session.tier) === 'draft' && <option value="standard">Standard (4 steps)</option>}
+                              <option value="high">High (8 steps)</option>
+                            </select>
                           )}
                           {img.status === 'Failed' && (
                             <button className="btn btn-primary" onClick={startProcessing}>

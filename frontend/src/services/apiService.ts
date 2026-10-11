@@ -23,8 +23,9 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 
 // ---------- mappings between the screen's words and the backend's words ----------
 const MATERIAL_OF: Record<OutputCategory, string> = {
-  Images: 'colouring', Flashcards: 'flashcards', Worksheets: 'worksheet', Posters: 'poster',
+  Images: 'thumbnail', Flashcards: 'flashcards', Worksheets: 'worksheet', Posters: 'poster',
 };
+const AUTO = 'auto'; // no category chosen: the planner works it out from the words
 const CATEGORY_OF: Record<string, OutputCategory> = {
   colouring: 'Images', thumbnail: 'Images', flashcards: 'Flashcards', worksheet: 'Worksheets', poster: 'Posters',
 };
@@ -35,9 +36,10 @@ export const categoryOf = (material: string): OutputCategory => CATEGORY_OF[mate
 
 // ---------- plan (the proposal shown before generating) ----------
 export interface PlanOptions {
-  category: OutputCategory;
+  category?: OutputCategory;
+  material?: string; // exact material found by the planner, used when no category was chosen
   ageGroup?: AgeGroup;
-  quantity: number;
+  quantity?: number;
   tier?: Tier;
   colourMode?: ColourMode;
 }
@@ -62,6 +64,10 @@ export interface PlanView {
   maxTotalNeurons: number;
   ageGroup?: AgeGroup;
   colourMode: ColourMode;
+  material: string;
+  category: OutputCategory;
+  tierSource: string;
+  reusable: number;
 }
 
 function toPlanView(p: any): PlanView {
@@ -87,13 +93,18 @@ function toPlanView(p: any): PlanView {
     maxTotalNeurons: round(e.max_neurons * count, 3),
     ageGroup: age ? UI_AGE[age] : undefined,
     colourMode: (p.resolved?.colour_mode?.value ?? 'colour') as ColourMode,
+    material: p.material_type,
+    category: categoryOf(p.material_type),
+    tierSource: p.resolved?.tier?.source ?? 'planner',
+    reusable: 0,
   };
 }
 
 const round = (n: number, d: number) => Math.round(n * 10 ** d) / 10 ** d;
 
 function overridesOf(o: PlanOptions) {
-  const ov: Record<string, unknown> = { count: o.quantity };
+  const ov: Record<string, unknown> = {};
+  if (o.quantity) ov.count = o.quantity;
   if (o.ageGroup) ov.age_band = BACKEND_AGE[o.ageGroup];
   if (o.tier) ov.tier = o.tier;
   if (o.colourMode) ov.colour_mode = o.colourMode;
@@ -106,7 +117,7 @@ export const fmtUsd = (n: number) => `$${n < 0.01 ? n.toFixed(4) : n.toFixed(2)}
 
 // ---------- status mapping ----------
 function toImage(job: any): ImageResult {
-  const base = { id: job.job_id, isRetrieved: !!job.cache_hit };
+  const base = { id: job.job_id, isRetrieved: !!job.cache_hit, tier: job.tier as Tier, neurons: job.cache_hit ? 0 : (job.neurons ?? undefined) };
   if (job.status === 'completed') return { ...base, status: 'Completed', url: `${API}/history/${job.job_id}/asset` };
   if (job.status === 'failed') {
     const why: Record<string, string> = {
@@ -155,21 +166,22 @@ async function pollUntilDone(planId: string, onProgress: (images: ImageResult[])
 
 export const apiService = {
   // ----- planning -----
+  // 'Images' sends no fixed material: the words decide (colouring book, plain picture, ...).
   async plan(prompt: string, o: PlanOptions): Promise<PlanView> {
     const p = await call<any>('/plans', {
       method: 'POST',
-      body: JSON.stringify({ material_type: MATERIAL_OF[o.category], prompt, overrides: overridesOf(o) }),
+      body: JSON.stringify({ material_type: o.material ?? (o.category && o.category !== 'Images' ? MATERIAL_OF[o.category] : AUTO), prompt, overrides: overridesOf(o) }),
     });
-    return toPlanView(p);
-  },
-
-  /** What the planner understands from the words alone (age, and the first guess for colour). */
-  async inferFromPrompt(prompt: string, category: OutputCategory = 'Images'): Promise<PlanView> {
-    const p = await call<any>('/plans', {
-      method: 'POST',
-      body: JSON.stringify({ material_type: MATERIAL_OF[category], prompt }),
-    });
-    return toPlanView(p);
+    const view = toPlanView(p);
+    // How many pictures are already in the library? They cost 0 neurons.
+    try {
+      const r = await call<{ reusable: number }>(`/plans/${view.planId}/reuse`);
+      view.reusable = r.reusable;
+      const paid = Math.max(0, view.count - r.reusable);
+      view.totalNeurons = round(view.perImageNeurons * paid, 3);
+      view.totalCostUsd = round(p.estimate.cost_usd * paid, 6);
+    } catch { /* the preview still works without it */ }
+    return view;
   },
 
   async config() {
@@ -182,7 +194,7 @@ export const apiService = {
 
   // ----- generating -----
   /** Creates the plan, runs it on the backend and reports every status change. Retries failed pictures of an existing plan. */
-  async processImages(session: CreationSession, onProgress: (images: ImageResult[]) => void, onPlan?: (p: { planId: string; tier: Tier; colourMode: ColourMode }) => void): Promise<{ metrics: SessionMetrics; planId: string; tier: Tier; colourMode: ColourMode }> {
+  async processImages(session: CreationSession, onProgress: (images: ImageResult[]) => void, onPlan?: (p: { planId: string; tier: Tier; colourMode: ColourMode; category: OutputCategory; ageGroup?: AgeGroup; quantity: number; material: string }) => void): Promise<{ metrics: SessionMetrics; planId: string; tier: Tier; colourMode: ColourMode }> {
     let planId = session.planId;
     let tier = session.tier;
     let colourMode = session.colourMode;
@@ -192,11 +204,11 @@ export const apiService = {
       }
     } else {
       const plan = await this.plan(session.prompt, {
-        category: session.category ?? 'Images', ageGroup: session.ageGroup, quantity: session.quantity ?? 1,
+        category: session.category, material: session.material, ageGroup: session.ageGroup, quantity: session.quantity,
         tier: session.tier, colourMode: session.colourMode,
       });
       planId = plan.planId; tier = plan.tier; colourMode = plan.colourMode;
-      onPlan?.({ planId, tier: plan.tier, colourMode: plan.colourMode });
+      onPlan?.({ planId, tier: plan.tier, colourMode: plan.colourMode, category: plan.category, ageGroup: plan.ageGroup, quantity: plan.count, material: plan.material });
       onProgress(Array.from({ length: plan.count }, (_, i) => ({ id: `${planId}-${i}`, status: 'Ready' as const, isRetrieved: false })));
       await call(`/plans/${planId}/generate`, { method: 'POST' });
     }
@@ -223,7 +235,17 @@ export const apiService = {
   savePreferences: (p: Partial<UserPreferences>) => call<UserPreferences>('/preferences', { method: 'PUT', body: JSON.stringify(p) }).then(() => undefined),
 
   // ----- saved images and numbers -----
-  getSavedImages: () => call<{ id: string; url: string; title: string; category: string; date: string }[]>('/saved-images'),
+  getSavedImages: (q?: string) => call<{ id: string; url: string; title: string; category: string; date: string }[]>('/saved-images' + (q && q.trim() ? `?q=${encodeURIComponent(q.trim())}` : '')),
+
+  // ----- upgrade on demand: make one finished picture again at a higher quality -----
+  async upgradeImage(session: CreationSession, imageId: string, tier: Tier, onProgress: (images: ImageResult[]) => void): Promise<SessionMetrics> {
+    await call(`/jobs/${imageId}/upgrade`, { method: 'POST', body: JSON.stringify({ tier }) });
+    await sleep(500);
+    const images = await pollUntilDone(session.planId!, onProgress);
+    const bust = Date.now();
+    onProgress(images.map(i => (i.url ? { ...i, url: `${i.url}?v=${bust}` } : i)));
+    return metricsOf(session.planId!, session.tier ?? 'standard');
+  },
   clearSavedImages: () => call<void>('/saved-images', { method: 'DELETE' }),
 
   async getGlobalMetrics(): Promise<GlobalMetrics> {

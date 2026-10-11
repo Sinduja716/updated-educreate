@@ -21,3 +21,16 @@ def read_plan(plan_id: str) -> Plan:
     if plan is None:
         raise HTTPException(404, "plan not found")
     return plan
+
+
+@router.get("/plans/{plan_id}/reuse")
+def reuse_preview(plan_id: str) -> dict:
+    """Before generating: how many of this plan's pictures are already in the library (they cost 0 neurons)."""
+    from app.pipeline import materials, retrieval
+
+    plan = store.get(plan_id)
+    if plan is None:
+        raise HTTPException(404, "plan not found")
+    wanted = sorted(plan.jobs, key=lambda j: j.sequence)[: materials.count_of(plan)]
+    ids = [j.job_id for j in wanted if retrieval.would_reuse(plan, j)]
+    return {"plan_id": plan_id, "total": len(wanted), "reusable": len(ids), "reusable_job_ids": ids}

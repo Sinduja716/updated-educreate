@@ -71,7 +71,12 @@ def write_preferences(body: dict) -> dict:
 
 # ---------- saved images (finished pictures kept in history) ----------
 @router.get("/saved-images")
-def saved_images() -> list[dict]:
+def saved_images(q: str | None = None) -> list[dict]:
+    """All saved pictures, newest first. With q, only pictures whose prompt or subject contains every word of q."""
+    words = [w for w in (q or "").lower().split() if w]
+    items = history_store.list_history(1000)
+    if words:
+        items = [i for i in items if all(w in f"{i.prompt} {i.item_key} {i.material_type}".lower().replace("-", " ").replace(":", " ") for w in words)]
     return [
         {
             "id": i.creation_id,
@@ -80,7 +85,7 @@ def saved_images() -> list[dict]:
             "category": CATEGORY_OF.get(i.material_type, "Images"),
             "date": i.created_at,
         }
-        for i in history_store.list_history(1000)
+        for i in items
     ]
 
 

@@ -27,6 +27,7 @@ function App() {
   // History State
   const [sessions, setSessions] = useState<CreationSession[]>([]);
   const [prefs, setPrefs] = useState<UserPreferences | null>(null);
+  const [libraryQuery, setLibraryQuery] = useState('');
 
   useEffect(() => {
     loadSessions();
@@ -76,12 +77,28 @@ function App() {
     loadSessions();
   };
 
+  // Enter on the prompt screen: start at once. Nothing is asked; the planner works everything out from the words.
   const handlePromptSubmit = (p: string) => {
+    setPrompt(p);
+    const session: CreationSession = {
+      id: `session-${Date.now()}`,
+      title: p,
+      timestamp: new Date().toISOString(),
+      prompt: p,
+      category: prefs?.defaultCategory || undefined,
+      quantity: prefs?.defaultQuantity && prefs.defaultQuantity > 1 ? prefs.defaultQuantity : undefined,
+      images: []
+    };
+    setCurrentSession(session);
+    setWorkflowStage('STAGE_3_WORKSPACE');
+  };
+
+  const handleChooseOptions = (p: string) => {
     setPrompt(p);
     setWorkflowStage('STAGE_2_OPTIONS');
   };
 
-  const handleOptionsSubmit = (cat: OutputCategory, age: AgeGroup, qty: number, tier?: Tier, colourMode?: ColourMode) => {
+  const handleOptionsSubmit = (cat: OutputCategory, age: AgeGroup, qty: number, tier?: Tier, colourMode?: ColourMode, material?: string) => {
     setCategory(cat);
     setAgeGroup(age);
     setQuantity(qty);
@@ -97,6 +114,7 @@ function App() {
       quantity: qty,
       tier,
       colourMode,
+      material,
       images: []
     };
     
@@ -119,13 +137,13 @@ function App() {
       case 'USAGE':
         return <UsageSavingsDashboard />;
       case 'LIBRARY':
-        return <SavedImageLibrary onSessionClick={handleLoadSession} onNewCreation={handleStartNew} onReuse={handleReuse} />;
+        return <SavedImageLibrary onSessionClick={handleLoadSession} onNewCreation={handleStartNew} onReuse={handleReuse} initialQuery={libraryQuery} />;
       case 'SETTINGS':
         return <SettingsPage onClearSessions={() => { setSessions([]); handleStartNew(); }} />;
       case 'CREATE':
       default:
         if (workflowStage === 'STAGE_1_PROMPT') {
-          return <PromptEntry initialPrompt={prompt} onSubmit={handlePromptSubmit} />;
+          return <PromptEntry initialPrompt={prompt} onSubmit={handlePromptSubmit} onChooseOptions={handleChooseOptions} />;
         }
         if (workflowStage === 'STAGE_2_OPTIONS') {
           return (
@@ -167,7 +185,8 @@ function App() {
         onCloseMobile={() => setIsMobileOpen(false)}
         viewState={viewState}
         sessions={sessions}
-        onNavigate={setViewState}
+        onNavigate={(v) => { if (v === 'LIBRARY') setLibraryQuery(''); setViewState(v); }}
+        onOpenLibrary={(q) => { setLibraryQuery(q); setViewState('LIBRARY'); }}
         onNewCreation={handleStartNew}
         onLoadSession={handleLoadSession}
         onRenameSession={handleRenameSession}
