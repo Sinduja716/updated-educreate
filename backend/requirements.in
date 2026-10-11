@@ -1,0 +1,12 @@
+# Top-level packages only. The exact versions of everything live in requirements.lock.txt
+fastapi
+uvicorn
+pydantic
+httpx
+pillow
+pymongo
+opencv-python-headless
+reportlab
+python-dotenv
+google-genai
+pytest

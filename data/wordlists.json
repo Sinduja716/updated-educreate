@@ -1,0 +1,27 @@
+{
+  "animals": [
+    "alligator", "bear", "cat", "dog", "elephant", "frog", "giraffe", "horse", "iguana", "jellyfish", 
+    "kangaroo", "lion", "monkey", "newt", "owl", "penguin", "quail", "rabbit", "snake", "tiger", 
+    "unicorn", "vulture", "whale", "x-ray tetra", "yak", "zebra"
+  ],
+  "numbers": [
+    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"
+  ],
+  "days": [
+    "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"
+  ],
+  "months": [
+    "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"
+  ],
+  "shapes": [
+    "circle", "square", "triangle", "rectangle", "star", "heart", "diamond", "oval", "pentagon", "hexagon"
+  ],
+  "colours": [
+    "red", "orange", "yellow", "green", "blue", "purple", "pink", "brown", "black", "white", "grey"
+  ],
+  "fruits": [
+    "apple", "banana", "cherry", "date", "elderberry", "fig", "grape", "honeydew", "ita palm", "jackfruit", 
+    "kiwi", "lemon", "mango", "nectarine", "orange", "papaya", "quince", "raspberry", "strawberry", "tangerine",
+    "ugli fruit", "vanilla", "watermelon", "xigua", "yuzu", "zucchini"
+  ]
+}

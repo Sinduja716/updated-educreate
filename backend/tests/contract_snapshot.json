@@ -1,0 +1,2091 @@
+{
+ "ConfigResponse": {
+  "description": "What the app is running with. The UI shows a banner when something is missing or simulated.",
+  "properties": {
+   "database_connected": {
+    "title": "Database Connected",
+    "type": "boolean"
+   },
+   "demo_mode": {
+    "title": "Demo Mode",
+    "type": "boolean"
+   },
+   "image_provider": {
+    "title": "Image Provider",
+    "type": "string"
+   },
+   "online_search": {
+    "title": "Online Search",
+    "type": "boolean"
+   },
+   "planner": {
+    "title": "Planner",
+    "type": "string"
+   },
+   "provider_configured": {
+    "title": "Provider Configured",
+    "type": "boolean"
+   }
+  },
+  "required": [
+   "image_provider",
+   "provider_configured",
+   "demo_mode",
+   "database_connected",
+   "online_search",
+   "planner"
+  ],
+  "title": "ConfigResponse",
+  "type": "object"
+ },
+ "ErrorResponse": {
+  "properties": {
+   "code": {
+    "title": "Code",
+    "type": "string"
+   },
+   "message": {
+    "title": "Message",
+    "type": "string"
+   }
+  },
+  "required": [
+   "code",
+   "message"
+  ],
+  "title": "ErrorResponse",
+  "type": "object"
+ },
+ "ExportResponse": {
+  "properties": {
+   "download_url": {
+    "title": "Download Url",
+    "type": "string"
+   },
+   "plan_id": {
+    "title": "Plan Id",
+    "type": "string"
+   }
+  },
+  "required": [
+   "plan_id",
+   "download_url"
+  ],
+  "title": "ExportResponse",
+  "type": "object"
+ },
+ "GenerateResponse": {
+  "properties": {
+   "accepted": {
+    "title": "Accepted",
+    "type": "boolean"
+   },
+   "plan_id": {
+    "title": "Plan Id",
+    "type": "string"
+   }
+  },
+  "required": [
+   "plan_id",
+   "accepted"
+  ],
+  "title": "GenerateResponse",
+  "type": "object"
+ },
+ "GenerationRequest": {
+  "$defs": {
+   "MaterialType": {
+    "description": "The PURPOSE of the image. `auto` means the system decides; a Plan never keeps `auto`.",
+    "enum": [
+     "colouring",
+     "worksheet",
+     "flashcards",
+     "poster",
+     "thumbnail",
+     "auto"
+    ],
+    "title": "MaterialType",
+    "type": "string"
+   },
+   "Overrides": {
+    "description": "Values the teacher edited on the summary card.",
+    "properties": {
+     "age_band": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Age Band"
+     },
+     "colour_mode": {
+      "anyOf": [
+       {
+        "enum": [
+         "outline",
+         "colour"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Colour Mode"
+     },
+     "count": {
+      "anyOf": [
+       {
+        "maximum": 30,
+        "minimum": 1,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Count"
+     },
+     "language": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Language"
+     },
+     "tier": {
+      "anyOf": [
+       {
+        "enum": [
+         "draft",
+         "standard",
+         "high"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Tier"
+     }
+    },
+    "title": "Overrides",
+    "type": "object"
+   }
+  },
+  "properties": {
+   "material_type": {
+    "$ref": "#/$defs/MaterialType"
+   },
+   "overrides": {
+    "anyOf": [
+     {
+      "$ref": "#/$defs/Overrides"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "prompt": {
+    "maxLength": 500,
+    "minLength": 1,
+    "title": "Prompt",
+    "type": "string"
+   }
+  },
+  "required": [
+   "material_type",
+   "prompt"
+  ],
+  "title": "GenerationRequest",
+  "type": "object"
+ },
+ "HistoryItem": {
+  "description": "One finished image the user received (generated, reused, uploaded or found online).",
+  "properties": {
+   "age_band": {
+    "anyOf": [
+     {
+      "type": "string"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Age Band"
+   },
+   "cache_hit": {
+    "default": false,
+    "title": "Cache Hit",
+    "type": "boolean"
+   },
+   "colour_mode": {
+    "anyOf": [
+     {
+      "type": "string"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Colour Mode"
+   },
+   "cost_usd": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Cost Usd"
+   },
+   "created_at": {
+    "title": "Created At",
+    "type": "string"
+   },
+   "creation_id": {
+    "title": "Creation Id",
+    "type": "string"
+   },
+   "item_key": {
+    "title": "Item Key",
+    "type": "string"
+   },
+   "job_id": {
+    "anyOf": [
+     {
+      "type": "string"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Job Id"
+   },
+   "material_type": {
+    "title": "Material Type",
+    "type": "string"
+   },
+   "neurons": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Neurons"
+   },
+   "plan_id": {
+    "anyOf": [
+     {
+      "type": "string"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Plan Id"
+   },
+   "prompt": {
+    "title": "Prompt",
+    "type": "string"
+   },
+   "provider": {
+    "anyOf": [
+     {
+      "type": "string"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Provider"
+   },
+   "seconds": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Seconds"
+   },
+   "tier": {
+    "anyOf": [
+     {
+      "type": "string"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Tier"
+   }
+  },
+  "required": [
+   "creation_id",
+   "material_type",
+   "prompt",
+   "item_key",
+   "created_at"
+  ],
+  "title": "HistoryItem",
+  "type": "object"
+ },
+ "HistoryResponse": {
+  "$defs": {
+   "HistoryItem": {
+    "description": "One finished image the user received (generated, reused, uploaded or found online).",
+    "properties": {
+     "age_band": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Age Band"
+     },
+     "cache_hit": {
+      "default": false,
+      "title": "Cache Hit",
+      "type": "boolean"
+     },
+     "colour_mode": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Colour Mode"
+     },
+     "cost_usd": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Cost Usd"
+     },
+     "created_at": {
+      "title": "Created At",
+      "type": "string"
+     },
+     "creation_id": {
+      "title": "Creation Id",
+      "type": "string"
+     },
+     "item_key": {
+      "title": "Item Key",
+      "type": "string"
+     },
+     "job_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Job Id"
+     },
+     "material_type": {
+      "title": "Material Type",
+      "type": "string"
+     },
+     "neurons": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Neurons"
+     },
+     "plan_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Plan Id"
+     },
+     "prompt": {
+      "title": "Prompt",
+      "type": "string"
+     },
+     "provider": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Provider"
+     },
+     "seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Seconds"
+     },
+     "tier": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Tier"
+     }
+    },
+    "required": [
+     "creation_id",
+     "material_type",
+     "prompt",
+     "item_key",
+     "created_at"
+    ],
+    "title": "HistoryItem",
+    "type": "object"
+   }
+  },
+  "properties": {
+   "items": {
+    "items": {
+     "$ref": "#/$defs/HistoryItem"
+    },
+    "title": "Items",
+    "type": "array"
+   }
+  },
+  "title": "HistoryResponse",
+  "type": "object"
+ },
+ "Job": {
+  "$defs": {
+   "JobStatus": {
+    "enum": [
+     "pending",
+     "processing",
+     "completed",
+     "failed"
+    ],
+    "title": "JobStatus",
+    "type": "string"
+   },
+   "ResourceEstimate": {
+    "description": "Compute estimate for ONE image, next to what maximum quality would have cost.\nBuilt only by app/estimate.py so every track shows identical numbers.",
+    "properties": {
+     "cost_usd": {
+      "title": "Cost Usd",
+      "type": "number"
+     },
+     "energy_wh": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Energy Wh"
+     },
+     "max_cost_usd": {
+      "title": "Max Cost Usd",
+      "type": "number"
+     },
+     "max_energy_wh": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Max Energy Wh"
+     },
+     "max_neurons": {
+      "title": "Max Neurons",
+      "type": "number"
+     },
+     "max_seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Max Seconds"
+     },
+     "max_steps": {
+      "title": "Max Steps",
+      "type": "integer"
+     },
+     "measured": {
+      "title": "Measured",
+      "type": "boolean"
+     },
+     "method": {
+      "default": "",
+      "title": "Method",
+      "type": "string"
+     },
+     "neurons": {
+      "title": "Neurons",
+      "type": "number"
+     },
+     "notes": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Notes",
+      "type": "array"
+     },
+     "placeholder": {
+      "title": "Placeholder",
+      "type": "boolean"
+     },
+     "saving_percent": {
+      "title": "Saving Percent",
+      "type": "number"
+     },
+     "seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Seconds"
+     },
+     "steps": {
+      "title": "Steps",
+      "type": "integer"
+     },
+     "tier": {
+      "enum": [
+       "draft",
+       "standard",
+       "high"
+      ],
+      "title": "Tier",
+      "type": "string"
+     },
+     "time_saving_percent": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Time Saving Percent"
+     }
+    },
+    "required": [
+     "tier",
+     "steps",
+     "neurons",
+     "cost_usd",
+     "max_steps",
+     "max_neurons",
+     "max_cost_usd",
+     "saving_percent",
+     "measured",
+     "placeholder"
+    ],
+    "title": "ResourceEstimate",
+    "type": "object"
+   }
+  },
+  "properties": {
+   "asset_uri": {
+    "anyOf": [
+     {
+      "type": "string"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Asset Uri"
+   },
+   "attempts": {
+    "default": 0,
+    "title": "Attempts",
+    "type": "integer"
+   },
+   "cache_hit": {
+    "default": false,
+    "title": "Cache Hit",
+    "type": "boolean"
+   },
+   "error_code": {
+    "anyOf": [
+     {
+      "type": "string"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Error Code"
+   },
+   "estimate": {
+    "anyOf": [
+     {
+      "$ref": "#/$defs/ResourceEstimate"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "item_key": {
+    "title": "Item Key",
+    "type": "string"
+   },
+   "job_id": {
+    "title": "Job Id",
+    "type": "string"
+   },
+   "latency_ms": {
+    "anyOf": [
+     {
+      "type": "integer"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Latency Ms"
+   },
+   "model": {
+    "anyOf": [
+     {
+      "type": "string"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Model"
+   },
+   "neurons": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Neurons"
+   },
+   "plan_id": {
+    "title": "Plan Id",
+    "type": "string"
+   },
+   "prompt": {
+    "title": "Prompt",
+    "type": "string"
+   },
+   "provider": {
+    "anyOf": [
+     {
+      "type": "string"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Provider"
+   },
+   "sequence": {
+    "title": "Sequence",
+    "type": "integer"
+   },
+   "status": {
+    "$ref": "#/$defs/JobStatus",
+    "default": "pending"
+   },
+   "steps": {
+    "default": 4,
+    "title": "Steps",
+    "type": "integer"
+   },
+   "tier": {
+    "default": "standard",
+    "enum": [
+     "draft",
+     "standard",
+     "high"
+    ],
+    "title": "Tier",
+    "type": "string"
+   }
+  },
+  "required": [
+   "job_id",
+   "plan_id",
+   "sequence",
+   "item_key",
+   "prompt"
+  ],
+  "title": "Job",
+  "type": "object"
+ },
+ "MetricsResponse": {
+  "properties": {
+   "baseline_cost_usd": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Baseline Cost Usd"
+   },
+   "baseline_energy_wh": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Baseline Energy Wh"
+   },
+   "baseline_neurons": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Baseline Neurons"
+   },
+   "baseline_seconds": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Baseline Seconds"
+   },
+   "cache_hits": {
+    "title": "Cache Hits",
+    "type": "integer"
+   },
+   "energy_saved_wh": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Energy Saved Wh"
+   },
+   "energy_wh_used": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Energy Wh Used"
+   },
+   "estimated_cost_usd": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Estimated Cost Usd"
+   },
+   "image_calls": {
+    "title": "Image Calls",
+    "type": "integer"
+   },
+   "neurons_used": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Neurons Used"
+   },
+   "notes": {
+    "items": {
+     "type": "string"
+    },
+    "title": "Notes",
+    "type": "array"
+   },
+   "plan_id": {
+    "title": "Plan Id",
+    "type": "string"
+   },
+   "saving_percent": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Saving Percent"
+   },
+   "seconds_used": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Seconds Used"
+   },
+   "tier_counts": {
+    "additionalProperties": {
+     "type": "integer"
+    },
+    "title": "Tier Counts",
+    "type": "object"
+   },
+   "time_saving_percent": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Time Saving Percent"
+   }
+  },
+  "required": [
+   "plan_id",
+   "image_calls",
+   "cache_hits"
+  ],
+  "title": "MetricsResponse",
+  "type": "object"
+ },
+ "Overrides": {
+  "description": "Values the teacher edited on the summary card.",
+  "properties": {
+   "age_band": {
+    "anyOf": [
+     {
+      "type": "string"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Age Band"
+   },
+   "colour_mode": {
+    "anyOf": [
+     {
+      "enum": [
+       "outline",
+       "colour"
+      ],
+      "type": "string"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Colour Mode"
+   },
+   "count": {
+    "anyOf": [
+     {
+      "maximum": 30,
+      "minimum": 1,
+      "type": "integer"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Count"
+   },
+   "language": {
+    "anyOf": [
+     {
+      "type": "string"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Language"
+   },
+   "tier": {
+    "anyOf": [
+     {
+      "enum": [
+       "draft",
+       "standard",
+       "high"
+      ],
+      "type": "string"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Tier"
+   }
+  },
+  "title": "Overrides",
+  "type": "object"
+ },
+ "Plan": {
+  "$defs": {
+   "Job": {
+    "properties": {
+     "asset_uri": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Asset Uri"
+     },
+     "attempts": {
+      "default": 0,
+      "title": "Attempts",
+      "type": "integer"
+     },
+     "cache_hit": {
+      "default": false,
+      "title": "Cache Hit",
+      "type": "boolean"
+     },
+     "error_code": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Error Code"
+     },
+     "estimate": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/ResourceEstimate"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "item_key": {
+      "title": "Item Key",
+      "type": "string"
+     },
+     "job_id": {
+      "title": "Job Id",
+      "type": "string"
+     },
+     "latency_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Latency Ms"
+     },
+     "model": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Model"
+     },
+     "neurons": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Neurons"
+     },
+     "plan_id": {
+      "title": "Plan Id",
+      "type": "string"
+     },
+     "prompt": {
+      "title": "Prompt",
+      "type": "string"
+     },
+     "provider": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Provider"
+     },
+     "sequence": {
+      "title": "Sequence",
+      "type": "integer"
+     },
+     "status": {
+      "$ref": "#/$defs/JobStatus",
+      "default": "pending"
+     },
+     "steps": {
+      "default": 4,
+      "title": "Steps",
+      "type": "integer"
+     },
+     "tier": {
+      "default": "standard",
+      "enum": [
+       "draft",
+       "standard",
+       "high"
+      ],
+      "title": "Tier",
+      "type": "string"
+     }
+    },
+    "required": [
+     "job_id",
+     "plan_id",
+     "sequence",
+     "item_key",
+     "prompt"
+    ],
+    "title": "Job",
+    "type": "object"
+   },
+   "JobStatus": {
+    "enum": [
+     "pending",
+     "processing",
+     "completed",
+     "failed"
+    ],
+    "title": "JobStatus",
+    "type": "string"
+   },
+   "MaterialType": {
+    "description": "The PURPOSE of the image. `auto` means the system decides; a Plan never keeps `auto`.",
+    "enum": [
+     "colouring",
+     "worksheet",
+     "flashcards",
+     "poster",
+     "thumbnail",
+     "auto"
+    ],
+    "title": "MaterialType",
+    "type": "string"
+   },
+   "ResolvedField": {
+    "description": "One value on the summary card and where it came from.",
+    "properties": {
+     "source": {
+      "enum": [
+       "user",
+       "planner",
+       "default"
+      ],
+      "title": "Source",
+      "type": "string"
+     },
+     "value": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "integer"
+       }
+      ],
+      "title": "Value"
+     }
+    },
+    "required": [
+     "value",
+     "source"
+    ],
+    "title": "ResolvedField",
+    "type": "object"
+   },
+   "ResourceEstimate": {
+    "description": "Compute estimate for ONE image, next to what maximum quality would have cost.\nBuilt only by app/estimate.py so every track shows identical numbers.",
+    "properties": {
+     "cost_usd": {
+      "title": "Cost Usd",
+      "type": "number"
+     },
+     "energy_wh": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Energy Wh"
+     },
+     "max_cost_usd": {
+      "title": "Max Cost Usd",
+      "type": "number"
+     },
+     "max_energy_wh": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Max Energy Wh"
+     },
+     "max_neurons": {
+      "title": "Max Neurons",
+      "type": "number"
+     },
+     "max_seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Max Seconds"
+     },
+     "max_steps": {
+      "title": "Max Steps",
+      "type": "integer"
+     },
+     "measured": {
+      "title": "Measured",
+      "type": "boolean"
+     },
+     "method": {
+      "default": "",
+      "title": "Method",
+      "type": "string"
+     },
+     "neurons": {
+      "title": "Neurons",
+      "type": "number"
+     },
+     "notes": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Notes",
+      "type": "array"
+     },
+     "placeholder": {
+      "title": "Placeholder",
+      "type": "boolean"
+     },
+     "saving_percent": {
+      "title": "Saving Percent",
+      "type": "number"
+     },
+     "seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Seconds"
+     },
+     "steps": {
+      "title": "Steps",
+      "type": "integer"
+     },
+     "tier": {
+      "enum": [
+       "draft",
+       "standard",
+       "high"
+      ],
+      "title": "Tier",
+      "type": "string"
+     },
+     "time_saving_percent": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Time Saving Percent"
+     }
+    },
+    "required": [
+     "tier",
+     "steps",
+     "neurons",
+     "cost_usd",
+     "max_steps",
+     "max_neurons",
+     "max_cost_usd",
+     "saving_percent",
+     "measured",
+     "placeholder"
+    ],
+    "title": "ResourceEstimate",
+    "type": "object"
+   }
+  },
+  "properties": {
+   "estimate": {
+    "$ref": "#/$defs/ResourceEstimate"
+   },
+   "jobs": {
+    "items": {
+     "$ref": "#/$defs/Job"
+    },
+    "title": "Jobs",
+    "type": "array"
+   },
+   "material_type": {
+    "$ref": "#/$defs/MaterialType"
+   },
+   "original_prompt": {
+    "title": "Original Prompt",
+    "type": "string"
+   },
+   "page_format": {
+    "enum": [
+     "A4_PORTRAIT",
+     "A3_PORTRAIT",
+     "CARD_3X5",
+     "SQUARE_SMALL"
+    ],
+    "title": "Page Format",
+    "type": "string"
+   },
+   "plan_id": {
+    "title": "Plan Id",
+    "type": "string"
+   },
+   "profile": {
+    "title": "Profile",
+    "type": "string"
+   },
+   "resolved": {
+    "additionalProperties": {
+     "$ref": "#/$defs/ResolvedField"
+    },
+    "title": "Resolved",
+    "type": "object"
+   },
+   "steps": {
+    "title": "Steps",
+    "type": "integer"
+   },
+   "tier": {
+    "enum": [
+     "draft",
+     "standard",
+     "high"
+    ],
+    "title": "Tier",
+    "type": "string"
+   },
+   "tier_reason": {
+    "title": "Tier Reason",
+    "type": "string"
+   },
+   "warnings": {
+    "items": {
+     "type": "string"
+    },
+    "title": "Warnings",
+    "type": "array"
+   }
+  },
+  "required": [
+   "plan_id",
+   "material_type",
+   "original_prompt",
+   "page_format",
+   "profile",
+   "steps",
+   "tier",
+   "tier_reason",
+   "estimate",
+   "resolved",
+   "jobs"
+  ],
+  "title": "Plan",
+  "type": "object"
+ },
+ "ResolvedField": {
+  "description": "One value on the summary card and where it came from.",
+  "properties": {
+   "source": {
+    "enum": [
+     "user",
+     "planner",
+     "default"
+    ],
+    "title": "Source",
+    "type": "string"
+   },
+   "value": {
+    "anyOf": [
+     {
+      "type": "string"
+     },
+     {
+      "type": "integer"
+     }
+    ],
+    "title": "Value"
+   }
+  },
+  "required": [
+   "value",
+   "source"
+  ],
+  "title": "ResolvedField",
+  "type": "object"
+ },
+ "ResourceEstimate": {
+  "description": "Compute estimate for ONE image, next to what maximum quality would have cost.\nBuilt only by app/estimate.py so every track shows identical numbers.",
+  "properties": {
+   "cost_usd": {
+    "title": "Cost Usd",
+    "type": "number"
+   },
+   "energy_wh": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Energy Wh"
+   },
+   "max_cost_usd": {
+    "title": "Max Cost Usd",
+    "type": "number"
+   },
+   "max_energy_wh": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Max Energy Wh"
+   },
+   "max_neurons": {
+    "title": "Max Neurons",
+    "type": "number"
+   },
+   "max_seconds": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Max Seconds"
+   },
+   "max_steps": {
+    "title": "Max Steps",
+    "type": "integer"
+   },
+   "measured": {
+    "title": "Measured",
+    "type": "boolean"
+   },
+   "method": {
+    "default": "",
+    "title": "Method",
+    "type": "string"
+   },
+   "neurons": {
+    "title": "Neurons",
+    "type": "number"
+   },
+   "notes": {
+    "items": {
+     "type": "string"
+    },
+    "title": "Notes",
+    "type": "array"
+   },
+   "placeholder": {
+    "title": "Placeholder",
+    "type": "boolean"
+   },
+   "saving_percent": {
+    "title": "Saving Percent",
+    "type": "number"
+   },
+   "seconds": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Seconds"
+   },
+   "steps": {
+    "title": "Steps",
+    "type": "integer"
+   },
+   "tier": {
+    "enum": [
+     "draft",
+     "standard",
+     "high"
+    ],
+    "title": "Tier",
+    "type": "string"
+   },
+   "time_saving_percent": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Time Saving Percent"
+   }
+  },
+  "required": [
+   "tier",
+   "steps",
+   "neurons",
+   "cost_usd",
+   "max_steps",
+   "max_neurons",
+   "max_cost_usd",
+   "saving_percent",
+   "measured",
+   "placeholder"
+  ],
+  "title": "ResourceEstimate",
+  "type": "object"
+ },
+ "StatusResponse": {
+  "$defs": {
+   "Job": {
+    "properties": {
+     "asset_uri": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Asset Uri"
+     },
+     "attempts": {
+      "default": 0,
+      "title": "Attempts",
+      "type": "integer"
+     },
+     "cache_hit": {
+      "default": false,
+      "title": "Cache Hit",
+      "type": "boolean"
+     },
+     "error_code": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Error Code"
+     },
+     "estimate": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/ResourceEstimate"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "item_key": {
+      "title": "Item Key",
+      "type": "string"
+     },
+     "job_id": {
+      "title": "Job Id",
+      "type": "string"
+     },
+     "latency_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Latency Ms"
+     },
+     "model": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Model"
+     },
+     "neurons": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Neurons"
+     },
+     "plan_id": {
+      "title": "Plan Id",
+      "type": "string"
+     },
+     "prompt": {
+      "title": "Prompt",
+      "type": "string"
+     },
+     "provider": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Provider"
+     },
+     "sequence": {
+      "title": "Sequence",
+      "type": "integer"
+     },
+     "status": {
+      "$ref": "#/$defs/JobStatus",
+      "default": "pending"
+     },
+     "steps": {
+      "default": 4,
+      "title": "Steps",
+      "type": "integer"
+     },
+     "tier": {
+      "default": "standard",
+      "enum": [
+       "draft",
+       "standard",
+       "high"
+      ],
+      "title": "Tier",
+      "type": "string"
+     }
+    },
+    "required": [
+     "job_id",
+     "plan_id",
+     "sequence",
+     "item_key",
+     "prompt"
+    ],
+    "title": "Job",
+    "type": "object"
+   },
+   "JobStatus": {
+    "enum": [
+     "pending",
+     "processing",
+     "completed",
+     "failed"
+    ],
+    "title": "JobStatus",
+    "type": "string"
+   },
+   "ResourceEstimate": {
+    "description": "Compute estimate for ONE image, next to what maximum quality would have cost.\nBuilt only by app/estimate.py so every track shows identical numbers.",
+    "properties": {
+     "cost_usd": {
+      "title": "Cost Usd",
+      "type": "number"
+     },
+     "energy_wh": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Energy Wh"
+     },
+     "max_cost_usd": {
+      "title": "Max Cost Usd",
+      "type": "number"
+     },
+     "max_energy_wh": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Max Energy Wh"
+     },
+     "max_neurons": {
+      "title": "Max Neurons",
+      "type": "number"
+     },
+     "max_seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Max Seconds"
+     },
+     "max_steps": {
+      "title": "Max Steps",
+      "type": "integer"
+     },
+     "measured": {
+      "title": "Measured",
+      "type": "boolean"
+     },
+     "method": {
+      "default": "",
+      "title": "Method",
+      "type": "string"
+     },
+     "neurons": {
+      "title": "Neurons",
+      "type": "number"
+     },
+     "notes": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Notes",
+      "type": "array"
+     },
+     "placeholder": {
+      "title": "Placeholder",
+      "type": "boolean"
+     },
+     "saving_percent": {
+      "title": "Saving Percent",
+      "type": "number"
+     },
+     "seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Seconds"
+     },
+     "steps": {
+      "title": "Steps",
+      "type": "integer"
+     },
+     "tier": {
+      "enum": [
+       "draft",
+       "standard",
+       "high"
+      ],
+      "title": "Tier",
+      "type": "string"
+     },
+     "time_saving_percent": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Time Saving Percent"
+     }
+    },
+    "required": [
+     "tier",
+     "steps",
+     "neurons",
+     "cost_usd",
+     "max_steps",
+     "max_neurons",
+     "max_cost_usd",
+     "saving_percent",
+     "measured",
+     "placeholder"
+    ],
+    "title": "ResourceEstimate",
+    "type": "object"
+   }
+  },
+  "properties": {
+   "complete": {
+    "title": "Complete",
+    "type": "boolean"
+   },
+   "completed": {
+    "title": "Completed",
+    "type": "integer"
+   },
+   "failed": {
+    "title": "Failed",
+    "type": "integer"
+   },
+   "jobs": {
+    "items": {
+     "$ref": "#/$defs/Job"
+    },
+    "title": "Jobs",
+    "type": "array"
+   },
+   "pending": {
+    "title": "Pending",
+    "type": "integer"
+   },
+   "plan_id": {
+    "title": "Plan Id",
+    "type": "string"
+   },
+   "processing": {
+    "title": "Processing",
+    "type": "integer"
+   },
+   "total": {
+    "title": "Total",
+    "type": "integer"
+   }
+  },
+  "required": [
+   "plan_id",
+   "total",
+   "completed",
+   "failed",
+   "pending",
+   "processing",
+   "complete",
+   "jobs"
+  ],
+  "title": "StatusResponse",
+  "type": "object"
+ },
+ "UploadOutlineRequest": {
+  "properties": {
+   "filename": {
+    "title": "Filename",
+    "type": "string"
+   },
+   "image_base64": {
+    "title": "Image Base64",
+    "type": "string"
+   },
+   "mode": {
+    "default": "outline",
+    "enum": [
+     "outline",
+     "grayscale"
+    ],
+    "title": "Mode",
+    "type": "string"
+   },
+   "threshold": {
+    "anyOf": [
+     {
+      "maximum": 255,
+      "minimum": 0,
+      "type": "integer"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Threshold"
+   }
+  },
+  "required": [
+   "filename",
+   "image_base64"
+  ],
+  "title": "UploadOutlineRequest",
+  "type": "object"
+ },
+ "UploadOutlineResponse": {
+  "properties": {
+   "asset_uri": {
+    "title": "Asset Uri",
+    "type": "string"
+   },
+   "cost_usd": {
+    "default": 0.0,
+    "title": "Cost Usd",
+    "type": "number"
+   },
+   "creation_id": {
+    "title": "Creation Id",
+    "type": "string"
+   },
+   "material_type": {
+    "default": "colouring",
+    "title": "Material Type",
+    "type": "string"
+   },
+   "neurons": {
+    "default": 0.0,
+    "title": "Neurons",
+    "type": "number"
+   },
+   "provider": {
+    "default": "upload",
+    "title": "Provider",
+    "type": "string"
+   },
+   "seconds": {
+    "anyOf": [
+     {
+      "type": "number"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null,
+    "title": "Seconds"
+   }
+  },
+  "required": [
+   "creation_id",
+   "asset_uri"
+  ],
+  "title": "UploadOutlineResponse",
+  "type": "object"
+ }
+}
