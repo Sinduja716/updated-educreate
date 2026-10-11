@@ -11,7 +11,7 @@ For each material (image=colouring, flashcards, worksheet, poster) it checks:
   4 colour picture, outline wanted   -> converted for free (not for worksheets: they stay in colour)
   5 higher quality than stored       -> generated again
   6 export the PDF                   -> N + 1 pages (last page = resource report)
-It saves the PDFs and a picture sheet to outputs/test_all/ and prints a table. Exit code 1 if anything fails.
+It saves the finished images, an optional PDF per material and a picture sheet to outputs/test_all/ and prints a table. Exit code 1 if anything fails.
 """
 import io
 import re
@@ -104,7 +104,7 @@ def check_pdf(plan, label="pdf"):
     rows.append((plan.material_type.value, f"6 {label}: {pages} pages", len(plan.jobs), 0, 0, None, None, "PASS" if ok else "FAIL"))
     if not ok:
         failures.append(f"{plan.material_type.value}: pdf has {pages} pages, expected {len(plan.jobs) + 1}")
-    for j in plan.jobs[:3]:
+    for j in plan.jobs[:2]:
         sheet.append((plan.material_type.value, client.get(f"/api/v1/jobs/{j.job_id}/asset").content))
 
 
@@ -132,18 +132,30 @@ for material, prompt, n, can_outline in CASES:
     run(material, quality, {"made": 1}, "5b high wanted: generated again", count=1, tier="high")
     check_pdf(first)
 
-# picture sheet
+# picture sheet: the finished images (first 2 of each material), shown in their real shape
 if sheet:
-    cols = 3
-    tiles = [Image.open(io.BytesIO(b)).convert("RGB").resize((256, 256)) for _, b in sheet]
+    picked, seen = [], {}
+    for name, b in sheet:
+        if seen.get(name, 0) < 2:
+            seen[name] = seen.get(name, 0) + 1
+            picked.append((name, b))
+    tiles = []
+    for _, b in picked:
+        t = Image.open(io.BytesIO(b)).convert("RGB")
+        t.thumbnail((300, 440))
+        tiles.append(t)
+    cols = 4
     rws = (len(tiles) + cols - 1) // cols
-    img = Image.new("RGB", (cols * 266, rws * 286 + 10), "white")
+    img = Image.new("RGB", (cols * 320 + 10, rws * 480 + 10), (235, 235, 235))
     d = ImageDraw.Draw(img)
-    for i, ((name, _), t) in enumerate(zip(sheet, tiles)):
-        x, y = (i % cols) * 266 + 5, (i // cols) * 286 + 5
-        img.paste(t, (x, y + 20))
-        d.text((x, y + 3), name, fill="black")
+    for i, ((name, _), t) in enumerate(zip(picked, tiles)):
+        x, y = (i % cols) * 320 + 10, (i // cols) * 480 + 10
+        img.paste(t, (x, y + 24))
+        d.text((x, y + 4), name, fill="black")
     img.save(OUT / "pictures.png")
+    # also keep each finished image as its own file
+    for k, (name, b) in enumerate(sheet):
+        (OUT / f"{name}-{k}.png").write_bytes(b)
 
 w = [max(len(str(r[i])) for r in rows) for i in range(8)]
 head = ("material", "scenario", "pics", "new", "reused", "neurons", "saved%", "result")

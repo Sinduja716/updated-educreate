@@ -48,6 +48,16 @@ function App() {
     setViewState('CREATE');
   };
 
+  const handleReuse = (p: string, cat: OutputCategory) => {
+    setPrompt(p);
+    setCategory(cat);
+    setAgeGroup(undefined);
+    setQuantity(prefs?.defaultQuantity || 1);
+    setCurrentSession(null);
+    setWorkflowStage('STAGE_2_OPTIONS');
+    setViewState('CREATE');
+  };
+
   const handleGoHome = () => {
     setWorkflowStage('STAGE_1_PROMPT');
     setViewState('CREATE');
@@ -109,7 +119,7 @@ function App() {
       case 'USAGE':
         return <UsageSavingsDashboard />;
       case 'LIBRARY':
-        return <SavedImageLibrary onSessionClick={handleLoadSession} onNewCreation={handleStartNew} />;
+        return <SavedImageLibrary onSessionClick={handleLoadSession} onNewCreation={handleStartNew} onReuse={handleReuse} />;
       case 'SETTINGS':
         return <SettingsPage onClearSessions={() => { setSessions([]); handleStartNew(); }} />;
       case 'CREATE':

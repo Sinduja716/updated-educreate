@@ -14,7 +14,7 @@ from PIL import Image
 
 from app.config import settings
 from app.estimate import make_estimate, neurons_for_steps
-from app.pipeline import budget, history, library, materials, retrieval
+from app.pipeline import budget, compose, history, library, materials, retrieval
 from app.providers import get_provider
 from app.providers.base import ProviderError
 from app.schemas import Job, JobStatus, Plan
@@ -55,7 +55,7 @@ def _lib_key(plan: Plan, job: Job) -> tuple[str, str, str, str]:
         job.item_key,
         plan.material_type.value,
         materials.library_style(plan),
-        str(r["age_band"].value) if "age_band" in r else "any",
+        "any",  # age only changes the words on the page, not the picture
     )
 
 
@@ -103,7 +103,7 @@ def _run_one_inner(plan: Plan, job: Job) -> None:
     hit = retrieval.find_stored(plan, job)
     if hit is not None:
         cached, how = hit
-        _asset_path(job).write_bytes(cached)
+        _asset_path(job).write_bytes(compose.compose(plan, job, cached))
         job.asset_uri = f"/api/v1/jobs/{job.job_id}/asset"
         job.cache_hit = True
         job.provider = "library"
@@ -117,26 +117,32 @@ def _run_one_inner(plan: Plan, job: Job) -> None:
     job.cache_hit = False
     provider = get_provider()
     real = provider.name != "mock"
-    if real and not budget.allow(neurons_for_steps(job.steps)):
+    reserved = neurons_for_steps(job.steps) if real else 0.0
+    if real and not budget.reserve(reserved):
         job.status = JobStatus.failed
         job.error_code = "budget"
         return
     try:
         result = _generate_with_retries(provider, job, materials.build_prompt(plan, job))
-        png = materials.finish_image(plan, job, _to_png(result.image_bytes))
+        png = materials.finish_image(plan, job, _to_png(result.image_bytes))  # raw picture: this is what the library keeps
+        final = compose.compose(plan, job, png)                              # finished image: picture + words
     except ProviderError as exc:
+        if real:
+            budget.release(reserved)
         job.status = JobStatus.failed
         job.error_code = exc.code
         return
     except Exception:  # unreadable image bytes
+        if real:
+            budget.settle(reserved, reserved)  # the call was made and paid for
         job.status = JobStatus.failed
         job.error_code = "bad_image"
         return
 
-    _asset_path(job).write_bytes(png)
+    _asset_path(job).write_bytes(final)
     neurons = result.neurons if result.neurons is not None else neurons_for_steps(job.steps)
     if real:
-        budget.record(neurons)
+        budget.settle(reserved, neurons)
         library.save(*key, png, {"steps": job.steps, "model": result.model, "provider": provider.name,
                                  "subject": materials.subject_of(job, plan)})
     job.asset_uri = f"/api/v1/jobs/{job.job_id}/asset"

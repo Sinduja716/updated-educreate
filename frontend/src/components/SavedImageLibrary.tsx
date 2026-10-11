@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { CreationSession } from '../types';
+import type { CreationSession, OutputCategory } from '../types';
 import { apiService } from '../services/apiService';
 import { Download, Image as ImageIcon } from 'lucide-react';
 
@@ -14,16 +14,20 @@ interface SavedImage {
 interface SavedImageLibraryProps {
   onSessionClick: (session: CreationSession) => void;
   onNewCreation: () => void;
+  onReuse: (prompt: string, category: OutputCategory) => void;
 }
 
-export function SavedImageLibrary({ onNewCreation }: SavedImageLibraryProps) {
+export function SavedImageLibrary({ onNewCreation, onReuse }: SavedImageLibraryProps) {
   const [images, setImages] = useState<SavedImage[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const data = await apiService.getSavedImages();
-      setImages(data);
+      try {
+        setImages(await apiService.getSavedImages());
+      } catch {
+        setImages([]);
+      }
       setLoading(false);
     }
     load();
@@ -83,6 +87,14 @@ export function SavedImageLibrary({ onNewCreation }: SavedImageLibraryProps) {
                     onClick={() => handleDownload(img.url, img.id)}
                   >
                     <Download size={14} /> Download
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    style={{ width: '100%', padding: '0.375rem', fontSize: '0.875rem', marginTop: '0.5rem' }}
+                    title="Start a new request with this prompt. Stored pictures are reused, not generated again."
+                    onClick={() => onReuse(img.title, img.category as OutputCategory)}
+                  >
+                    Use again
                   </button>
                 </div>
               </div>

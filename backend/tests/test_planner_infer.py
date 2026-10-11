@@ -58,3 +58,12 @@ def test_metrics_have_time_fields(client):
     job_runner.run_plan(pid)
     m = client.get(f"/api/v1/plans/{pid}/metrics").json()
     assert m["seconds_used"] > 0 and m["baseline_seconds"] > m["seconds_used"] and m["time_saving_percent"] > 0
+
+
+def test_age_from_number_of_years():
+    from app.planner import infer_age_band
+    assert infer_age_band("animals for 4 year olds")[0] == "3-5"
+    assert infer_age_band("maths for a 7-year-old")[0] == "6-8"
+    assert infer_age_band("science for 12 year old students")[0] == "9-12"
+    assert infer_age_band("safety for age 30")[0] == "adult"
+    assert infer_age_band("a picture of a cat")[0] is None

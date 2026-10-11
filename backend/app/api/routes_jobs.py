@@ -1,6 +1,9 @@
 """TRACK 2 owns this file: generate, status, job, retry, asset, export, download."""
+import io
+import zipfile
+
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from app.config import settings
 from app.pipeline import jobs as job_runner
@@ -83,3 +86,21 @@ def download(plan_id: str):
     if not path.exists():
         raise HTTPException(404, "export not found")
     return FileResponse(path, media_type="application/pdf", filename=f"{plan_id}.pdf")
+
+
+@router.get("/plans/{plan_id}/images.zip")
+def images_zip(plan_id: str):
+    """All finished images of a plan in one zip (flashcards, worksheet pages, posters or outline images)."""
+    plan = _plan_or_404(plan_id)
+    buf = io.BytesIO()
+    count = 0
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as z:
+        for job in sorted(plan.jobs, key=lambda j: j.sequence):
+            path = settings.outputs_dir / plan.plan_id / f"{job.job_id}.png"
+            if job.status == JobStatus.completed and path.exists():
+                z.write(path, f"{plan.material_type.value}-{job.sequence:02d}-{job.item_key.split(':')[-1][:40]}.png")
+                count += 1
+    if count == 0:
+        raise HTTPException(404, "no finished images yet")
+    return Response(buf.getvalue(), media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="{plan_id}-images.zip"'})

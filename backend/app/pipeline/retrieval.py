@@ -46,8 +46,8 @@ def _style(plan: Plan, mode: str) -> str:
 
 
 def _age(plan: Plan) -> str:
-    field = plan.resolved.get("age_band")
-    return str(field.value) if field is not None else "any"
+    """The picture does not depend on age (age only changes the words on the page), so every age shares one stored picture."""
+    return "any"
 
 
 def _in_mode(plan: Plan, job: Job, mode: str):

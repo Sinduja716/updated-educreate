@@ -1,13 +1,7 @@
-"""TRACK 2: PDF export with ReportLab. Contract: build_pdf(plan) -> path of the PDF.
+"""TRACK 2: OPTIONAL PDF of the finished images. The images themselves are the main output (see compose.py).
 
-One PDF per request, one material only:
-  colouring  -> A4, one picture per page
-  flashcards -> 3x5 inch card, picture plus the word under it
-  worksheet  -> A4, title, instruction line, picture, answer lines (fixed text per age band)
-  poster     -> A3 (or A4), headline on top, picture below
-The last page is the resource page: neurons, cost, saving against the maximum setting, and how it was calculated.
-The image model never draws words; every word on a page is added here.
-Built-in Helvetica covers Latin text only. A non-Latin language would need a registered font (not done yet).
+build_pdf(plan) -> path. One page per finished image (full page, page size from plan.page_format), then a last
+resource page: neurons, cost, saving against the maximum setting, and how it is calculated.
 """
 from __future__ import annotations
 
@@ -21,7 +15,6 @@ from reportlab.pdfgen import canvas
 from app.config import settings
 from app.estimate import METHOD
 from app.metrics import compute_metrics
-from app.pipeline.materials import subject_of
 from app.schemas import JobStatus, MaterialType, Plan
 
 PAGE_SIZES = {"A4_PORTRAIT": A4, "A3_PORTRAIT": A3, "CARD_3X5": (3 * inch, 5 * inch), "SQUARE_SMALL": (4 * inch, 4 * inch)}
@@ -35,51 +28,11 @@ WORKSHEET_TEXT = {
 }
 
 
-def _fit(pdf: canvas.Canvas, text: str, font: str, size: float, max_width: float) -> float:
-    while size > 6 and pdf.stringWidth(text, font, size) > max_width:
-        size -= 1
-    return size
-
-
-def _centered(pdf, text: str, x_mid: float, y: float, font: str, size: float, max_width: float) -> None:
-    size = _fit(pdf, text, font, size, max_width)
-    pdf.setFont(font, size)
-    pdf.drawCentredString(x_mid, y, text)
-
-
-def _picture(pdf, path: Path, x: float, y: float, w: float, h: float) -> None:
-    if path.exists():
-        pdf.drawImage(ImageReader(str(path)), x, y, w, h, preserveAspectRatio=True, anchor="c")
-
-
-def _page(pdf, plan: Plan, job, folder: Path, size) -> None:
-    W, H = size
-    m = 0.08 * min(size)
+def _page(pdf, job, folder: Path, size) -> None:
+    """The finished image already holds the picture and all words, so a page is just that image, full page."""
     img = folder / f"{job.job_id}.png"
-    kind = plan.material_type
-    label = subject_of(job, plan).strip().capitalize()
-    if kind == MaterialType.flashcards:
-        _picture(pdf, img, m, m + 0.55 * inch, W - 2 * m, H - 2 * m - 0.55 * inch)
-        _centered(pdf, label, W / 2, m + 0.15 * inch, "Helvetica-Bold", 22, W - 2 * m)
-    elif kind == MaterialType.worksheet:
-        age = str(plan.resolved["age_band"].value) if "age_band" in plan.resolved else "6-8"
-        title, instruction, lines = WORKSHEET_TEXT.get(age, WORKSHEET_TEXT["6-8"])
-        _centered(pdf, title, W / 2, H - m - 20, "Helvetica-Bold", 28, W - 2 * m)
-        _centered(pdf, instruction, W / 2, H - m - 50, "Helvetica", 14, W - 2 * m)
-        pdf.setFont("Helvetica", 12)
-        pdf.drawString(m, H - m - 80, "Name: ______________________")
-        top = H - m - 100
-        bottom = m + 40 + lines * 36
-        _picture(pdf, img, m, bottom, W - 2 * m, top - bottom)
-        for i in range(lines):
-            y = m + 30 + i * 36
-            pdf.line(m, y, W - m, y)
-    elif kind == MaterialType.poster:
-        headline = plan.original_prompt.strip()[:60].upper()
-        _centered(pdf, headline, W / 2, H - m - 30, "Helvetica-Bold", 44, W - 2 * m)
-        _picture(pdf, img, m, m, W - 2 * m, H - 2 * m - 70)
-    else:
-        _picture(pdf, img, m, m, W - 2 * m, H - 2 * m)
+    if img.exists():
+        pdf.drawImage(ImageReader(str(img)), 0, 0, size[0], size[1], preserveAspectRatio=True, anchor="c")
 
 
 def _resource_page(pdf: canvas.Canvas, plan: Plan) -> None:
@@ -134,7 +87,7 @@ def build_pdf(plan: Plan) -> Path:
         if job.status != JobStatus.completed:
             continue
         pdf.setPageSize(size)
-        _page(pdf, plan, job, folder, size)
+        _page(pdf, job, folder, size)
         pdf.showPage()
     _resource_page(pdf, plan)
     pdf.save()

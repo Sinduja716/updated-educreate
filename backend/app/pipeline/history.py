@@ -94,3 +94,20 @@ def list_history(limit: int = 20, material_type: str | None = None) -> list[Hist
     if material_type:
         items = [i for i in items if i.material_type == material_type]
     return items[:limit]
+
+
+def delete_history(creation_id: str) -> None:
+    if "/" in creation_id or "\\" in creation_id:
+        return
+    mdb = db.mongo_db()
+    if mdb is not None:
+        mdb["history"].delete_one({"_id": creation_id})
+    else:
+        with _con() as con:
+            con.execute("DELETE FROM history WHERE creation_id=?", (creation_id,))
+    asset_path(creation_id).unlink(missing_ok=True)
+
+
+def clear_history() -> None:
+    for item in list_history(100000):
+        delete_history(item.creation_id)

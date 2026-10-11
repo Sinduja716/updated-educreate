@@ -9,15 +9,18 @@ export function UsageSavingsDashboard() {
   const [timeFilter, setTimeFilter] = useState('all-time');
   const [prefs, setPrefs] = useState<UserPreferences | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function load() {
-      const m = await apiService.getGlobalMetrics();
-      const h = await apiService.getSessions();
-      const p = await apiService.getPreferences();
-      setMetrics(m);
-      setHistory(h.filter(s => s.metrics));
-      setPrefs(p);
+      try {
+        const [m, h, p] = await Promise.all([apiService.getGlobalMetrics(), apiService.getSessions(), apiService.getPreferences()]);
+        setMetrics(m);
+        setHistory(h.filter(s => s.metrics));
+        setPrefs(p);
+      } catch (e: any) {
+        setError(e?.message || 'Could not load usage numbers.');
+      }
       setLoading(false);
     }
     load();
@@ -28,7 +31,7 @@ export function UsageSavingsDashboard() {
   }
 
   if (!metrics) {
-    return <div className="workspace"><div className="container">Metrics not available.</div></div>;
+    return <div className="workspace"><div className="container"><h3>Usage numbers are not available</h3><p>{error || 'No data.'}</p><p>Check that the backend is running on port 8000 and was restarted after the update (it must have the /api/v1/metrics/global route).</p></div></div>;
   }
 
   return (

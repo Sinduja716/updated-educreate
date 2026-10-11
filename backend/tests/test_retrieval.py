@@ -95,3 +95,13 @@ def test_not_enough_steps_regenerates(client, fake):
 def test_pages_of_one_request_stay_different(client, fake):
     _go(client, "colouring", "a happy dog", count=3)
     assert fake.calls == 3
+
+
+def test_other_age_group_reuses_same_picture(client, fake):
+    def run(age):
+        plan = client.post("/api/v1/plans", json={"material_type": "colouring", "prompt": "a rocket", "overrides": {"count": 1, "age_band": age}}).json()
+        client.post(f"/api/v1/plans/{plan['plan_id']}/generate")
+        return client.get(f"/api/v1/plans/{plan['plan_id']}/metrics").json()
+    assert run("3-5")["image_calls"] == 1
+    again = run("9-12")
+    assert again["image_calls"] == 0 and again["cache_hits"] == 1

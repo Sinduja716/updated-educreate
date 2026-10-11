@@ -3,6 +3,7 @@ from fastapi import APIRouter
 
 from app.config import settings
 from app.pipeline import db
+from app.planner import gemini
 from app.schemas import ConfigResponse
 
 router = APIRouter(prefix="/api/v1")
@@ -22,5 +23,5 @@ def config() -> ConfigResponse:
         demo_mode=settings.image_provider == "mock",
         database_connected=db.connected(),
         online_search=settings.online_search,
-        planner="rules",
+        planner="gemini+rules" if gemini.configured() else "rules",
     )

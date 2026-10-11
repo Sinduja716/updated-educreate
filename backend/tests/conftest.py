@@ -7,6 +7,12 @@ from app.pipeline import db
 from app.store import store
 
 
+@pytest.fixture(autouse=True)
+def _no_gemini(monkeypatch):
+    # Tests never call Gemini, whatever .env says. test_gemini_and_images.py switches it on with a fake answer.
+    monkeypatch.setattr(settings, "gemini_api_key", "")
+
+
 @pytest.fixture()
 def client(monkeypatch, tmp_path):
     # Tests never call the real image service (it costs neurons) and never touch the real data folders or database.

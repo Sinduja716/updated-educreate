@@ -11,6 +11,7 @@ import uuid
 from pathlib import Path
 
 from app.estimate import TIER_STEPS, make_estimate
+from app.planner import gemini
 from app.planner.defaults import DEFAULT_COLOUR_MODE, DEFAULTS, SETTINGS_TABLE
 from app.schemas import GenerationRequest, Job, MaterialType, Plan, ResolvedField
 
@@ -59,6 +60,11 @@ def infer_colour_mode(prompt: str, material: MaterialType) -> tuple[str, str, st
 def infer_age_band(prompt: str) -> tuple[str | None, str | None]:
     """Returns (age_band, matched_word) or (None, None). Matches whole words only."""
     low = prompt.lower()
+    m = re.search(r"(\d{1,2})\s*[- ]?(?:years?|yrs?)[- ]?olds?", low) or re.search(r"\bage[sd]?\s+(\d{1,2})\b", low)
+    if m:
+        n = int(m.group(1))
+        if 1 <= n <= 90:
+            return ("3-5" if n <= 5 else "6-8" if n <= 8 else "9-12" if n <= 14 else "adult"), m.group(0)
     for words, band in _AUDIENCES:
         for w in words:
             if re.search(r"(?<![a-z0-9])" + re.escape(w) + r"s?(?![a-z0-9])", low):
@@ -135,11 +141,25 @@ def parse_count_and_subjects(prompt: str) -> tuple[int | None, list[str] | None,
 
 def make_plan(req: GenerationRequest) -> Plan:
     purpose, warnings = resolve_purpose(req)
+    ai = gemini.suggest(req.prompt)  # None when Gemini is off or failed; the rules below always work
+    if gemini.configured() and ai is None:
+        warnings.append("Gemini was not available, so simple rules were used.")
+    ai_reason = None
+    if ai and req.material_type == MaterialType.auto and any("guessed" in w.lower() for w in warnings) and ai["material_type"]:
+        purpose = MaterialType(ai["material_type"])
+        warnings = [w for w in warnings if "guessed" not in w.lower()] + [f"Purpose chosen by Gemini: {ai['reason'] or purpose.value}."]
+        ai_reason = ai["reason"] or purpose.value
     d = DEFAULTS[purpose]
     resolved: dict[str, ResolvedField] = {}
 
     # Determine counts and subjects from prompt via planner rules
     planner_count, subjects, category = parse_count_and_subjects(req.prompt)
+    if ai and not subjects and ai["subjects"] and not (req.overrides and req.overrides.count):
+        subjects, category = ai["subjects"], (ai["topic"] or "topic")
+        planner_count = len(subjects) if planner_count in (None, 1) else planner_count
+        warnings.append(f"Items chosen by Gemini for '{category}': {', '.join(subjects[:5])}{'...' if len(subjects) > 5 else ''}.")
+    elif ai and ai["count"] and planner_count in (None, 1) and not subjects:
+        planner_count = ai["count"]
 
     wanted = req.overrides.count if req.overrides and req.overrides.count else None
 
@@ -164,6 +184,9 @@ def make_plan(req: GenerationRequest) -> Plan:
     elif inferred_age:
         resolved["age_band"] = ResolvedField(value=inferred_age, source="planner")
         warnings.append(f"Age group {inferred_age} chosen from the word '{age_word}'. Change it if that is wrong.")
+    elif ai and ai["age_band"]:
+        resolved["age_band"] = ResolvedField(value=ai["age_band"], source="planner")
+        warnings.append(f"Age group {ai['age_band']} chosen by Gemini. Change it if that is wrong.")
     else:
         resolved["age_band"] = ResolvedField(value="6-8", source="default")
 
@@ -172,6 +195,9 @@ def make_plan(req: GenerationRequest) -> Plan:
         mode, mode_source, mode_word = user_mode, "user", None
     else:
         mode, mode_source, mode_word = infer_colour_mode(req.prompt, purpose)
+        if mode_source == "default" and ai and ai["colour_mode"]:
+            mode, mode_source, mode_word = ai["colour_mode"], "planner", None
+            warnings.append(f"Colour mode '{mode}' chosen by Gemini.")
     if mode == "outline" and purpose == MaterialType.worksheet:
         mode, mode_source = "colour", "default"
         warnings.append("Worksheet pictures stay in colour.")
@@ -191,7 +217,8 @@ def make_plan(req: GenerationRequest) -> Plan:
         reason = table_reason
         if req.material_type == MaterialType.auto:
             guessed = any("guessed" in w.lower() for w in warnings)
-            reason = (f"Guessed: your request did not say what it is for, so {purpose.value} was chosen. {table_reason} "
+            reason = (f"Detected {purpose.value} by Gemini ({ai_reason}). {table_reason}" if ai_reason else
+                      f"Guessed: your request did not say what it is for, so {purpose.value} was chosen. {table_reason} "
                       "Pick a material or a quality level if that is wrong." if guessed else
                       f"Detected {purpose.value} from your words. {table_reason}")
     resolved["tier"] = ResolvedField(value=tier, source="user" if manual else "planner")
